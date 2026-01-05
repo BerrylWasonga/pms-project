@@ -1,0 +1,24 @@
+               HOW TO RUN THE SOURCE  CODE
+
+
+HOW TO RUN??
+
+Requirements
+
+    ● Download and Install any local web server such as XAMPP.
+    ● Download the provided source code zip file. (download button is located below)
+    
+System Installation/Setup
+
+    1. nable the GD Library in your php.ini file.
+    2.Open your XAMPP Control Panel and start Apache and MySQL.
+    3. Extract the downloaded source code zip file.
+    4.Copy the extracted source code folder and paste it into the XAMPP's "htdocs" directory.
+    5. BrowEse the PHPMyAdmin in a browser. i.e. http://localhost/phpmyadmin
+    6. Create a new database naming pms_db.
+    7. Import the provided SQL file. The file is known as pms_db.sql located inside the database folder.
+    8. Browse the Prison Management System in a browser. i.e. http://localhost/pms/.
+    
+Admin Default Access:
+Username: admin
+Password: admin123
