@@ -1,4 +1,143 @@
 <?php
+require_once(__DIR__ . '/../../config.php');
+
+// Handle form submission
+if(isset($_POST['save_inmate'])){
+    $response = array();
+    
+    try {
+        // Extract POST data
+        $id = isset($_POST['id']) ? $_POST['id'] : '';
+        $code = $_POST['code'];
+        $cell_id = $_POST['cell_id'];
+        $firstname = $_POST['firstname'];
+        $middlename = $_POST['middlename'];
+        $lastname = $_POST['lastname'];
+        $dob = $_POST['dob'];
+        $sex = $_POST['sex'];
+        $address = $_POST['address'];
+        $marital_status = $_POST['marital_status'];
+        $complexion = $_POST['complexion'];
+        $eye_color = $_POST['eye_color'];
+        $sentence = isset($_POST['sentence']) ? $_POST['sentence'] : '';
+        $date_from = $_POST['date_from'];
+        $date_to = $_POST['date_to'];
+        $emergency_name = $_POST['emergency_name'];
+        $emergency_relation = $_POST['emergency_relation'];
+        $emergency_contact = $_POST['emergency_contact'];
+        $crime_ids = isset($_POST['crime_ids']) ? $_POST['crime_ids'] : array();
+        
+        // Handle image upload
+        $image_path = '';
+        if(isset($_FILES['img']) && $_FILES['img']['tmp_name'] != ''){
+            $upload_dir = 'uploads/inmates/';
+            if(!is_dir($upload_dir)){
+                mkdir($upload_dir, 0777, true);
+            }
+            $fname = $upload_dir . strtotime(date('Y-m-d H:i:s')) . '_' . $_FILES['img']['name'];
+            if(move_uploaded_file($_FILES['img']['tmp_name'], $fname)){
+                $image_path = $fname;
+            }
+        }
+        
+        // Build SQL query
+        if(empty($id)){
+            // Insert new inmate
+            $sql = "INSERT INTO `inmate_list` SET 
+                    `code` = '$code',
+                    `cell_id` = '$cell_id',
+                    `firstname` = '$firstname',
+                    `middlename` = '$middlename',
+                    `lastname` = '$lastname',
+                    `dob` = '$dob',
+                    `sex` = '$sex',
+                    `address` = '$address',
+                    `marital_status` = '$marital_status',
+                    `complexion` = '$complexion',
+                    `eye_color` = '$eye_color',
+                    `sentence` = '$sentence',
+                    `date_from` = '$date_from',
+                    `date_to` = '$date_to',
+                    `emergency_name` = '$emergency_name',
+                    `emergency_relation` = '$emergency_relation',
+                    `emergency_contact` = '$emergency_contact'";
+            
+            if(!empty($image_path)){
+                $sql .= ", `image_path` = '$image_path'";
+            }
+            
+            if($conn->query($sql)){
+                $iid = $conn->insert_id;
+                
+                // Insert crimes
+                if(!empty($crime_ids)){
+                    foreach($crime_ids as $crime_id){
+                        $conn->query("INSERT INTO `inmate_crimes` SET inmate_id = '$iid', crime_id = '$crime_id'");
+                    }
+                }
+                
+                $response['status'] = 'success';
+                $response['iid'] = $iid;
+                $response['msg'] = 'Inmate saved successfully';
+            }else{
+                $response['status'] = 'failed';
+                $response['msg'] = 'Database error: ' . $conn->error;
+            }
+        }else{
+            // Update existing inmate
+            $sql = "UPDATE `inmate_list` SET 
+                    `code` = '$code',
+                    `cell_id` = '$cell_id',
+                    `firstname` = '$firstname',
+                    `middlename` = '$middlename',
+                    `lastname` = '$lastname',
+                    `dob` = '$dob',
+                    `sex` = '$sex',
+                    `address` = '$address',
+                    `marital_status` = '$marital_status',
+                    `complexion` = '$complexion',
+                    `eye_color` = '$eye_color',
+                    `sentence` = '$sentence',
+                    `date_from` = '$date_from',
+                    `date_to` = '$date_to',
+                    `emergency_name` = '$emergency_name',
+                    `emergency_relation` = '$emergency_relation',
+                    `emergency_contact` = '$emergency_contact'";
+            
+            if(!empty($image_path)){
+                $sql .= ", `image_path` = '$image_path'";
+            }
+            
+            $sql .= " WHERE id = '$id'";
+            
+            if($conn->query($sql)){
+                // Delete and re-insert crimes
+                $conn->query("DELETE FROM `inmate_crimes` WHERE inmate_id = '$id'");
+                if(!empty($crime_ids)){
+                    foreach($crime_ids as $crime_id){
+                        $conn->query("INSERT INTO `inmate_crimes` SET inmate_id = '$id', crime_id = '$crime_id'");
+                    }
+                }
+                
+                $response['status'] = 'success';
+                $response['iid'] = $id;
+                $response['msg'] = 'Inmate updated successfully';
+            }else{
+                $response['status'] = 'failed';
+                $response['msg'] = 'Database error: ' . $conn->error;
+            }
+        }
+        
+    } catch (Exception $e) {
+        $response['status'] = 'failed';
+        $response['msg'] = 'Error: ' . $e->getMessage();
+    }
+    
+    echo json_encode($response);
+    exit;
+}
+
+// Fetch inmate data if editing
 if(isset($_GET['id']) && $_GET['id'] > 0){
     $qry = $conn->query("SELECT * from `inmate_list` where id = '{$_GET['id']}' ");
     if($qry->num_rows > 0){
@@ -12,22 +151,31 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
     }
 }
 ?>
-<style>
-    img#cimg{
-		max-height: 15em;
-		max-width: 100%;
-		object-fit: scale-down;
-	}
-</style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= isset($id) ? "Update Inmate" : "New Inmate Entry" ?></title>
+    <style>
+        img#cimg{
+            max-height: 15em;
+            max-width: 100%;
+            object-fit: scale-down;
+        }
+    </style>
+</head>
+<body>
 <div class="content py-4 bg-gradient-navy px-3">
     <h4 class="mb-0"><?= isset($id) ? "Update Inmate" : "New Inmate Entry" ?></h4>
 </div>
 <div class="row mt-n4 justify-content-center align-items-center flex-column">
     <div class="col-lg-10 col-md-10 col-sm-12 col-xs-12">
         <div class="card rounded-0 shadow">
+            <form action="" id="inmate-form" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="save_inmate" value="1">
             <div class="card-body">
                 <div class="container-fluid">
-                    <form action="" id="inmate-form">
                         <input type="hidden" name="id" value="<?= isset($id) ? $id : '' ?>">
                         <div class="row">
                             <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
@@ -113,7 +261,7 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                             <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
                                 <div class="form-group">
                                     <label for="complexion" class="control-label">Complexion</label>
-                                    <input type="complexion" class="form-control form-control-sm rounded-0" name="complexion" id="complexion" required="required" value="<?= isset($complexion) ? $complexion : "" ?>">
+                                    <input type="text" class="form-control form-control-sm rounded-0" name="complexion" id="complexion" required="required" value="<?= isset($complexion) ? $complexion : "" ?>">
                                 </div>
                             </div>
                             <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
@@ -141,18 +289,10 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+                                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
                                     <div class="form-group">
-                                        <label for="action_id" class="control-label">Action</label>
-                                        <select class="form-control form-control-sm rounded-0" name="action_id" id="action_id" required="required">
-                                            <option value="" disabled selected>Select Action</option>
-                                            <?php 
-                                            $actions = $conn->query("SELECT * FROM `action_list` WHERE delete_flag = 0 AND status = 1 ORDER BY `name` ASC");
-                                            while($row = $actions->fetch_assoc()):
-                                            ?>
-                                            <option value="<?= $row['id'] ?>" <?= isset($action_id) && $action_id == $row['id'] ? 'selected' : '' ?>><?= $row['name'] ?></option>
-                                            <?php endwhile; ?>
-                                        </select>
+                                        <label for="sentence" class="control-label">Sentence</label>
+                                        <textarea rows="2" class="form-control form-control-sm rounded-0" name="sentence" id="sentence" required="required" placeholder="e.g., 5 years imprisonment"><?= isset($sentence) ? $sentence : "" ?></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -172,12 +312,12 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                             </div>
                         </fieldset>
                         <fieldset class="border px-2 py-2">
-                            <legend class="w-auto mx-3" >Emergency Contact Detials</legend>
+                            <legend class="w-auto mx-3" >Emergency Contact Details</legend>
                             <div class="row">
                                 <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
                                     <div class="form-group">
                                         <label for="emergency_name" class="control-label">Name</label>
-                                        <input type="emergency_name" class="form-control form-control-sm rounded-0" name="emergency_name" id="emergency_name" value="<?= isset($emergency_name) ? $emergency_name : "" ?>">
+                                        <input type="text" class="form-control form-control-sm rounded-0" name="emergency_name" id="emergency_name" value="<?= isset($emergency_name) ? $emergency_name : "" ?>">
                                     </div>
                                 </div>
                             </div>
@@ -201,9 +341,9 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                             <div class="row">
                                 <div class="col-lg-6 col-md-6 col-sm-12 col-xs-12">
                                     <div class="form-group">
-                                        <label for="" class="control-label">Inamate Image</label>
+                                        <label for="" class="control-label">Inmate Image</label>
                                         <div class="custom-file custom-file-sm rounded-0">
-                                            <input type="file" class="custom-file-input rounded-0" id="customFile1" name="img" onchange="displayImg(this)">
+                                            <input type="file" class="custom-file-input rounded-0" id="customFile1" name="img" onchange="displayImg(this)" accept="image/*">
                                             <label class="custom-file-label rounded-0" for="customFile1">Choose file</label>
                                         </div>
                                     </div>
@@ -215,7 +355,6 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                                 </div>
                             </div>
                         </fieldset>
-                    </form>
                 </div>
             </div>
             <div class="card-footer py-1 text-center">
@@ -228,24 +367,25 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 <a class="btn btn-flat btn-sm btn-light bg-gradient-light border" href="./?page=inmates/view_inmate&id=<?= isset($id) ? $id : '' ?>"><i class="fa fa-angle-left"></i> Cancel</a>
                 <?php endif; ?>
             </div>
+            </form>
         </div>
     </div>
 </div>
 <script>
     function displayImg(input,_this) {
-	    if (input.files && input.files[0]) {
-	        var reader = new FileReader();
-	        reader.onload = function (e) {
-	        	$('#cimg').attr('src', e.target.result);
-	        	$(input).siblings('.custom-file-label').html(input.files[0].name)
-	        }
-	        reader.readAsDataURL(input.files[0]);
-	    }else{
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                $('#cimg').attr('src', e.target.result);
+                $(input).siblings('.custom-file-label').html(input.files[0].name)
+            }
+            reader.readAsDataURL(input.files[0]);
+        }else{
             $('#cimg').attr('src', "<?php echo validate_image(isset($image_path) ? $image_path : '') ?>");
             $(input).siblings('.custom-file-label').html('Choose file')
         }
-	}
-	$(document).ready(function(){
+    }
+    $(document).ready(function(){
         $('#crime_ids').select2({
             placeholder:"Please select inmate crimes here",
             width:'100%',
@@ -256,43 +396,45 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
             width:'100%',
             containerCssClass:'form-control form-control-sm rounded-0'
         })
-		$('#inmate-form').submit(function(e){
-			e.preventDefault();
+        $('#inmate-form').submit(function(e){
+            e.preventDefault();
             var _this = $(this)
-			 $('.err-msg').remove();
+            $('.err-msg').remove();
             var el = $('<div>')
             el.addClass('alert alert-danger rounded-0 err-msg')
             el.hide()
-			start_loader();
-			$.ajax({
-				url:_base_url_+"classes/Master.php?f=save_inmate",
-				data: new FormData($(this)[0]),
+            start_loader();
+            $.ajax({
+                url: window.location.href,
+                data: new FormData($(this)[0]),
                 cache: false,
                 contentType: false,
                 processData: false,
                 method: 'POST',
                 type: 'POST',
                 dataType: 'json',
-				error:err=>{
-					console.log(err)
-					alert_toast("An error occured",'error');
-					end_loader();
-				},
-				success:function(resp){
-					if(typeof resp =='object' && resp.status == 'success'){
-						location.replace("./?page=inmates/view_inmate&id="+resp.iid)
-					}else if(resp.status == 'failed' && !!resp.msg){
-                            el.text(resp.msg)
-                            _this.prepend(el)
-                            el.show('slow')
-                            $("html, body").scrollTop(0);
+                error:err=>{
+                    console.log(err)
+                    alert_toast("An error occured",'error');
+                    end_loader();
+                },
+                success:function(resp){
+                    if(typeof resp =='object' && resp.status == 'success'){
+                        location.replace("./?page=inmates/view_inmate&id="+resp.iid)
+                    }else if(resp.status == 'failed' && !!resp.msg){
+                        el.text(resp.msg)
+                        _this.prepend(el)
+                        el.show('slow')
+                        $("html, body").scrollTop(0);
                     }else{
-						alert_toast("An error occured",'error');
-					}
+                        alert_toast("An error occured",'error');
+                    }
                     end_loader()
-				}
-			})
-		})
+                }
+            })
+        })
 
-	})
+    })
 </script>
+</body>
+</html>
