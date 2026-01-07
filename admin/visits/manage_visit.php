@@ -20,7 +20,6 @@ if(isset($_GET['id']) && $_GET['id'] > 0){
                 $inmates = $conn->query("SELECT *, CONCAT(lastname, ', ', firstname, COALESCE(CONCAT(' ', middlename), '')) AS `name`
                                          FROM `inmate_list` 
                                          WHERE `status` = 1 
-                                         AND (date_to IS NULL OR date_to >= CURDATE())
                                          AND visiting_privilege = 1");
                 while($row = $inmates->fetch_assoc()):
                 ?>
