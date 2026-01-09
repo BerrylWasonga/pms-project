@@ -1,0 +1,17 @@
+{
+    "name": "hp/pms",
+    "autoload": {
+        "psr-4": {
+            "Hp\\Pms\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "BerrylWasonga",
+            "email": "berrylwasonga@gmail.com"
+        }
+    ],
+    "require-dev": {
+        "phpunit/phpunit": "*"
+    }
+}
