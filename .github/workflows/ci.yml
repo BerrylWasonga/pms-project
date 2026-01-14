@@ -11,6 +11,7 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    
 
     steps:
       - name: Checkout repository
@@ -19,7 +20,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.1 8.2'
           extensions: mbstring, mysqli, pdo, pdo_mysql
           coverage: none
 
@@ -44,3 +45,6 @@ jobs:
           else
             echo "No tests found, skipping"
           fi
+        
+      - run: composer audit
+
